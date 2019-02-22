@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Jille/bindlink/tallier"
+	"github.com/Jille/bindlink/multiplexer/tallier"
 
 	"bufio"
 	"fmt"

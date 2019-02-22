@@ -5,7 +5,7 @@ import (
 	"encoding/gob"
 	"log"
 
-	"github.com/Jille/bindlink/tallier"
+	"github.com/Jille/bindlink/multiplexer/tallier"
 )
 
 type ControlPacket struct {
@@ -43,6 +43,7 @@ func (m *Mux) Send(packet []byte) error {
 }
 
 func (m *Mux) Received(linkId int, packet []byte) error {
+	m.links[linkId].received.Tally()
 	return m.sendToSystem(packet)
 }
 

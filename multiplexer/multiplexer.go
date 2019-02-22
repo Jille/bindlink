@@ -2,7 +2,6 @@ package multiplexer
 
 type Mux struct {
 	links        map[int]*Stats
-	nextLinkId   int
 	sendToSystem func([]byte) error
 	sendToLink   func(int, []byte) error
 }
@@ -25,11 +24,12 @@ func (m *Mux) Send(packet []byte) error {
 	return nil
 }
 
-func (m *Mux) AddLink() int {
-	m.nextLinkId++
-	id := m.nextLinkId
-	m.links[id] = &Stats{}
-	return id
+func (m *Mux) Received(linkId int, packet []byte) error {
+	return m.sendToSystem(packet)
+}
+
+func (m *Mux) AddLink(linkId int) {
+	m.links[linkId] = &Stats{}
 }
 
 func (m *Mux) HandleControl(linkId int, packet []byte) {

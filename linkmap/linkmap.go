@@ -11,22 +11,26 @@ import (
 	"github.com/Jille/bindlink/multiplexer"
 )
 
+type UDPLikeConn interface {
+	Write(b []byte) (int, error)
+	ReadFromUDP(b []byte) (int, *net.UDPAddr, error)
+}
+var _ UDPLikeConn = &net.UDPConn{}
+
 type Map struct {
 	mtx        sync.Mutex
 	mp         *multiplexer.Mux
 	listener   *net.UDPConn
 	nextLinkId int
-	addrToLink map[string]int
 	linkToAddr map[int]*net.UDPAddr
-	addrToSock map[string]*net.UDPConn
+	linkToConn map[int]UDPLikeConn
 }
 
 func New(mp *multiplexer.Mux) *Map {
 	return &Map{
 		mp:         mp,
-		addrToLink: map[string]int{},
 		linkToAddr: map[int]*net.UDPAddr{},
-		addrToSock: map[string]*net.UDPConn{},
+		linkToConn: map[int]UDPLikeConn{},
 	}
 }
 
@@ -46,10 +50,10 @@ func (lm *Map) StartListener(port int) error {
 	return nil
 }
 
-func (lm *Map) InitiateLink(proxyAddr string) error {
+func (lm *Map) InitiateLink(targetAddr string) error {
 	lm.mtx.Lock()
 	defer lm.mtx.Unlock()
-	addr, err := net.ResolveUDPAddr("udp", proxyAddr)
+	addr, err := net.ResolveUDPAddr("udp", targetAddr)
 	if err != nil {
 		return err
 	}
@@ -57,18 +61,32 @@ func (lm *Map) InitiateLink(proxyAddr string) error {
 	if err != nil {
 		return err
 	}
+	lm.newLink(sock, addr)
+	return nil
+}
+
+func (lm *Map) InitiateLinkOverSOCKS(proxyAddr, target string) error {
+	lm.mtx.Lock()
+	defer lm.mtx.Unlock()
+	sock, err := NewUDPOverSocks(proxyAddr, target)
+	if err != nil {
+		return err
+	}
+	lm.newLink(sock, nil)
+	return nil
+}
+
+func (lm *Map) newLink(sock UDPLikeConn, addr *net.UDPAddr) {
 	lm.nextLinkId++
 	linkId := lm.nextLinkId
-	log.Printf("InitiateLink(%q): got link id %d", addr, linkId)
+	log.Printf("InitiateLink(%s): got link id %d", addr, linkId)
 	if linkId > 255 {
 		panic("ran out of link ids")
 	}
 	lm.mp.AddLink(linkId)
-	lm.addrToLink[addr.String()] = linkId
+	lm.linkToConn[linkId] = sock
 	lm.linkToAddr[linkId] = addr
-	lm.addrToSock[addr.String()] = sock
 	go lm.handleSocket(linkId, sock)
-	return nil
 }
 
 func (lm *Map) Run() {
@@ -93,7 +111,7 @@ func (lm *Map) broadcastControl() {
 	}
 }
 
-func (lm *Map) handleSocket(linkId int, sock *net.UDPConn) {
+func (lm *Map) handleSocket(linkId int, sock UDPLikeConn) {
 	buf := make([]byte, 8192)
 	for {
 		n, addr, err := sock.ReadFromUDP(buf)
@@ -108,7 +126,7 @@ func (lm *Map) handleSocket(linkId int, sock *net.UDPConn) {
 	}
 }
 
-func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, buf []byte) {
+func (lm *Map) handlePacket(linkId int, sock UDPLikeConn, addr *net.UDPAddr, buf []byte) {
 	lm.mtx.Lock()
 	defer lm.mtx.Unlock()
 	if len(buf) < 4 {
@@ -129,8 +147,7 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 	}
 	if linkId == -1 {
 		lm.linkToAddr[remoteLinkId] = addr
-		lm.addrToLink[addr.String()] = remoteLinkId
-		lm.addrToSock[addr.String()] = sock
+		lm.linkToConn[remoteLinkId] = sock
 	}
 	switch buf[2] {
 	case 'C':
@@ -145,13 +162,13 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 
 func (lm *Map) send(linkId int, packet []byte) error {
 	addr := lm.linkToAddr[linkId]
-	sock := lm.addrToSock[addr.String()]
+	sock := lm.linkToConn[linkId]
 	if sock == nil {
-		panic(fmt.Errorf("didn't find socket for link %d / addr %q", linkId, addr))
+		panic(fmt.Errorf("didn't find socket for link %d", linkId))
 	}
 	var err error
 	if sock == lm.listener {
-		_, err = sock.WriteToUDP(packet, addr)
+		_, err = lm.listener.WriteToUDP(packet, addr)
 	} else {
 		_, err = sock.Write(packet)
 	}

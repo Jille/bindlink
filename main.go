@@ -15,7 +15,9 @@ import (
 var (
 	listenPort = flag.Int("listen_port", 0, "Listen for incoming connections on this port")
 	httpAddr   = flag.String("http_listen_port", ":8080", "Listen on this address for stats")
-	proxies    = flag.String("proxies", "", "Host:port pairs of proxy servers")
+	targets     = flag.String("targets", "", "Host:port pairs of direct endpoints to connect to")
+	proxies     = flag.String("proxies", "", "Host:port pairs of proxy servers")
+	proxyTarget = flag.String("proxy_target", "", "Host:port pair to have proxy servers connect to")
 )
 
 func main() {
@@ -37,11 +39,19 @@ func main() {
 			log.Fatalf("Failed to start listening socket: %v", err)
 		}
 	}
-	for _, p := range strings.Split(*proxies, ",") {
+	for _, p := range strings.Split(*targets, ",") {
 		if p == "" {
 			continue
 		}
 		if err := lm.InitiateLink(p); err != nil {
+			log.Fatalf("Failed to connect to peer %q: %v", p, err)
+		}
+	}
+	for _, p := range strings.Split(*proxies, ",") {
+		if p == "" {
+			continue
+		}
+		if err := lm.InitiateLinkOverSOCKS(p, *proxyTarget); err != nil {
 			log.Fatalf("Failed to connect to peer %q: %v", p, err)
 		}
 	}

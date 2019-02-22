@@ -85,7 +85,7 @@ func (lm *Map) broadcastControl() {
 	buf := make([]byte, len(cp)+4)
 	buf[0] = 'B'
 	buf[1] = 'L'
-	buf[2] = 'D'
+	buf[2] = 'C'
 	copy(buf[4:], cp)
 	for linkId := range lm.linkToAddr {
 		buf[3] = byte(linkId)

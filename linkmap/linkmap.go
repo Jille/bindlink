@@ -105,7 +105,7 @@ func (lm *Map) handlePacket(linkId int, addr *net.UDPAddr, buf []byte) {
 	case 'D':
 		lm.mp.Received(remoteLinkId, buf[4:])
 	default:
-		log.Printf("Packet of unknown type %q/%d from %s", buf[2], buf[2].addr)
+		log.Printf("Packet of unknown type %q/%d from %s", buf[2], buf[2], addr)
 		return
 	}
 }

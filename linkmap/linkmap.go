@@ -126,11 +126,11 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 	if _, known := lm.linkToAddr[remoteLinkId]; !known {
 		log.Printf("Got packet for new link %d from %s", remoteLinkId, addr)
 		lm.mp.AddLink(remoteLinkId)
-		lm.addrToLink[addr.String()] = remoteLinkId
-		lm.addrToSock[addr.String()] = sock
 	}
 	if linkId == -1 {
 		lm.linkToAddr[remoteLinkId] = addr
+		lm.addrToLink[addr.String()] = remoteLinkId
+		lm.addrToSock[addr.String()] = sock
 	}
 	switch buf[2] {
 	case 'C':

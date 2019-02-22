@@ -58,6 +58,7 @@ func (lm *Map) InitiateLink(proxyAddr string) error {
 	}
 	lm.nextLinkId++
 	linkId := lm.nextLinkId
+	log.Printf("InitiateLink(%q): got link id %d", addr, linkId)
 	if linkId > 255 {
 		panic("ran out of link ids")
 	}
@@ -119,6 +120,7 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 		panic(fmt.Errorf("got packet for link %d over link %d", remoteLinkId, linkId))
 	}
 	if _, known := lm.linkToAddr[remoteLinkId]; !known {
+		log.Printf("Got packet for new link %d from %s", remoteLinkId, addr)
 		lm.mp.AddLink(remoteLinkId)
 		lm.addrToLink[addr.String()] = remoteLinkId
 		lm.addrToSock[addr.String()] = sock

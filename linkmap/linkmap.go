@@ -13,6 +13,7 @@ import (
 type Map struct {
 	mtx        sync.Mutex
 	mp         *multiplexer.Mux
+	listener   *net.UDPConn
 	nextLinkId int
 	addrToLink map[string]int
 	linkToAddr map[int]*net.UDPAddr
@@ -39,6 +40,7 @@ func (lm *Map) StartListener(port int) error {
 	if err != nil {
 		return err
 	}
+	lm.listener = sock
 	go lm.handleSocket(-1, sock)
 	return nil
 }
@@ -137,7 +139,12 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 
 func (lm *Map) send(link int, packet []byte) error {
 	addr := lm.linkToAddr[link]
-	_, err := lm.addrToSock[addr.String()].WriteToUDP(packet, addr)
+	sock := lm.addrToSock[addr.String()]
+	if sock == lm.listener {
+		_, err := sock.WriteToUDP(packet, addr)
+		return err
+	}
+	_, err := sock.Write(packet)
 	return err
 }
 

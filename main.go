@@ -17,7 +17,7 @@ var (
 
 func main() {
 	flag.Parse()
-	tun, err := tundev.New()
+	tun, err := tundev.New(*listenPort > 0)
 	if err != nil {
 		log.Fatalf("Failed to create TUN device: %v", err)
 	}

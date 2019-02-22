@@ -4,6 +4,7 @@ package tundev
 
 import (
 	"log"
+	"os/exec"
 
 	"github.com/songgao/water"
 )
@@ -12,7 +13,11 @@ type Device struct {
 	ifce *water.Interface
 }
 
-func New() (*Device, error) {
+func New(isMaster bool) (*Device, error) {
+	ips := map[bool]string{
+		true: "10.10.10.1",
+		false: "10.10.10.2",
+	}
 	ifce, err := water.New(water.Config{
 		DeviceType: water.TUN,
 	})
@@ -20,6 +25,9 @@ func New() (*Device, error) {
 		return nil, err
 	}
 	log.Printf("Interface name: %s", ifce.Name())
+	if err := exec.Command("ifconfig", ifce.Name(), ips[isMaster], ips[!isMaster]).Run(); err != nil {
+		return nil, err
+	}
 	return &Device{ifce}, nil
 }
 

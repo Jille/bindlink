@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,6 +98,9 @@ func (lm *Map) handleSocket(linkId int, sock *net.UDPConn) {
 	for {
 		n, addr, err := sock.ReadFromUDP(buf)
 		if err != nil {
+			if strings.Contains(err.Error(), "connection refused") {
+				continue
+			}
 			log.Printf("ReadFromUDP failed: %v", err)
 			continue
 		}

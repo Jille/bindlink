@@ -4,7 +4,7 @@
 
 ## Internal API
 
-```
+```go
 // Reach out to a proxy server to start a connection to the remote daemon.
 LinkMap.InitiateLink(proxyAddr)
 // Bind on port and wait for the other side to call InitiateLink

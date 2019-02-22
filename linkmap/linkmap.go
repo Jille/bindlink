@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -84,7 +85,7 @@ func (lm *Map) broadcastControl() {
 	buf := make([]byte, len(cp)+4)
 	buf[0] = 'B'
 	buf[1] = 'L'
-	buf[2] = 'D'
+	buf[2] = 'C'
 	copy(buf[4:], cp)
 	for linkId := range lm.linkToAddr {
 		buf[3] = byte(linkId)
@@ -97,6 +98,9 @@ func (lm *Map) handleSocket(linkId int, sock *net.UDPConn) {
 	for {
 		n, addr, err := sock.ReadFromUDP(buf)
 		if err != nil {
+			if strings.Contains(err.Error(), "connection refused") {
+				continue
+			}
 			log.Printf("ReadFromUDP failed: %v", err)
 			continue
 		}
@@ -139,9 +143,12 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 	}
 }
 
-func (lm *Map) send(link int, packet []byte) error {
-	addr := lm.linkToAddr[link]
+func (lm *Map) send(linkId int, packet []byte) error {
+	addr := lm.linkToAddr[linkId]
 	sock := lm.addrToSock[addr.String()]
+	if sock == nil {
+		panic(fmt.Errorf("didn't find socket for link %d / addr %q", linkId, addr))
+	}
 	if sock == lm.listener {
 		_, err := sock.WriteToUDP(packet, addr)
 		return err

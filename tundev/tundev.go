@@ -9,7 +9,7 @@ import (
 )
 
 type Device struct {
-	ifce *water.Device
+	ifce *water.Interface
 }
 
 func New() (*Device, error) {
@@ -37,5 +37,6 @@ func (d *Device) Run(sendToMultiplexer func([]byte) error) {
 }
 
 func (d *Device) Send(packet []byte) error {
-	return d.ifce.Write(packet)
+	_, err := d.ifce.Write(packet)
+	return err
 }

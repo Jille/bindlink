@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Jille/bindlink/multiplexer"
 )
 
 type Map struct {
+	mtx        sync.Mutex
 	mp         *multiplexer.Mux
 	nextLinkId int
 	addrToLink map[string]int
@@ -27,6 +29,8 @@ func New(mp *multiplexer.Mux) *Map {
 }
 
 func (lm *Map) StartListener(port int) error {
+	lm.mtx.Lock()
+	defer lm.mtx.Unlock()
 	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return err
@@ -40,6 +44,8 @@ func (lm *Map) StartListener(port int) error {
 }
 
 func (lm *Map) InitiateLink(proxyAddr string) error {
+	lm.mtx.Lock()
+	defer lm.mtx.Unlock()
 	addr, err := net.ResolveUDPAddr("udp", proxyAddr)
 	if err != nil {
 		return err
@@ -64,16 +70,22 @@ func (lm *Map) InitiateLink(proxyAddr string) error {
 func (lm *Map) Run() {
 	for {
 		time.Sleep(time.Second)
-		cp := lm.mp.CraftControl()
-		buf := make([]byte, len(cp)+4)
-		buf[0] = 'B'
-		buf[1] = 'L'
-		buf[2] = 'D'
-		copy(buf[4:], cp)
-		for linkId := range lm.linkToAddr {
-			buf[3] = byte(linkId)
-			lm.send(linkId, buf)
-		}
+		lm.broadcastControl()
+	}
+}
+
+func (lm *Map) broadcastControl() {
+	lm.mtx.Lock()
+	defer lm.mtx.Unlock()
+	cp := lm.mp.CraftControl()
+	buf := make([]byte, len(cp)+4)
+	buf[0] = 'B'
+	buf[1] = 'L'
+	buf[2] = 'D'
+	copy(buf[4:], cp)
+	for linkId := range lm.linkToAddr {
+		buf[3] = byte(linkId)
+		lm.send(linkId, buf)
 	}
 }
 
@@ -90,6 +102,8 @@ func (lm *Map) handleSocket(linkId int, sock *net.UDPConn) {
 }
 
 func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, buf []byte) {
+	lm.mtx.Lock()
+	defer lm.mtx.Unlock()
 	if len(buf) < 4 {
 		log.Printf("Received short packet from %s", addr)
 		return

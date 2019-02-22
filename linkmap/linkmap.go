@@ -12,15 +12,17 @@ import (
 type Map struct {
 	mp         *multiplexer.Mux
 	nextLinkId int
-	ipToLink   map[*net.UDPAddr]int
-	linkToIP   map[int]*net.UDPAddr
+	addrToLink map[string]int
+	linkToAddr map[int]*net.UDPAddr
+	addrToSock map[string]*net.UDPConn
 }
 
 func New(mp *multiplexer.Mux) *Map {
 	return &Map{
-		mp:       mp,
-		ipToLink: map[*net.UDPAddr]int{},
-		linkToIP: map[int]*net.UDPAddr{},
+		mp:         mp,
+		addrToLink: map[string]int{},
+		linkToAddr: map[int]*net.UDPAddr{},
+		addrToSock: map[string]*net.UDPConn{},
 	}
 }
 
@@ -52,8 +54,9 @@ func (lm *Map) InitiateLink(proxyAddr string) error {
 		panic("ran out of link ids")
 	}
 	lm.mp.AddLink(linkId)
-	lm.ipToLink[addr] = linkId
-	lm.linkToIP[linkId] = addr
+	lm.addrToLink[addr.String()] = linkId
+	lm.linkToAddr[linkId] = addr
+	lm.addrToSock[addr.String()] = sock
 	go lm.handleSocket(linkId, sock)
 	return nil
 }
@@ -62,24 +65,31 @@ func (lm *Map) Run() {
 	for {
 		time.Sleep(time.Second)
 		cp := lm.mp.CraftControl()
-		// TODO: broadcast
-		_ = cp
+		buf := make([]byte, len(cp)+4)
+		buf[0] = 'B'
+		buf[1] = 'L'
+		buf[2] = 'D'
+		copy(buf[4:], cp)
+		for linkId := range lm.linkToAddr {
+			buf[3] = byte(linkId)
+			lm.send(linkId, buf)
+		}
 	}
 }
 
-func (lm *Map) handleSocket(linkId int, s *net.UDPConn) {
+func (lm *Map) handleSocket(linkId int, sock *net.UDPConn) {
 	buf := make([]byte, 8192)
 	for {
-		n, addr, err := s.ReadFromUDP(buf)
+		n, addr, err := sock.ReadFromUDP(buf)
 		if err != nil {
 			log.Printf("ReadFromUDP failed: %v", err)
 			continue
 		}
-		lm.handlePacket(linkId, addr, buf[:n])
+		lm.handlePacket(linkId, sock, addr, buf[:n])
 	}
 }
 
-func (lm *Map) handlePacket(linkId int, addr *net.UDPAddr, buf []byte) {
+func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, buf []byte) {
 	if len(buf) < 4 {
 		log.Printf("Received short packet from %s", addr)
 		return
@@ -92,12 +102,13 @@ func (lm *Map) handlePacket(linkId int, addr *net.UDPAddr, buf []byte) {
 	if linkId != -1 && remoteLinkId != linkId {
 		panic(fmt.Errorf("got packet for link %d over link %d", remoteLinkId, linkId))
 	}
-	if _, known := lm.linkToIP[remoteLinkId]; !known {
+	if _, known := lm.linkToAddr[remoteLinkId]; !known {
 		lm.mp.AddLink(remoteLinkId)
-		lm.ipToLink[addr] = remoteLinkId
+		lm.addrToLink[addr.String()] = remoteLinkId
+		lm.addrToSock[addr.String()] = sock
 	}
 	if linkId == -1 {
-		lm.linkToIP[remoteLinkId] = addr
+		lm.linkToAddr[remoteLinkId] = addr
 	}
 	switch buf[2] {
 	case 'C':
@@ -110,6 +121,18 @@ func (lm *Map) handlePacket(linkId int, addr *net.UDPAddr, buf []byte) {
 	}
 }
 
+func (lm *Map) send(link int, packet []byte) error {
+	addr := lm.linkToAddr[link]
+	_, err := lm.addrToSock[addr.String()].WriteToUDP(packet, addr)
+	return err
+}
+
 func (lm *Map) Send(link int, packet []byte) error {
-	return nil
+	buf := make([]byte, len(packet)+4)
+	buf[0] = 'B'
+	buf[1] = 'L'
+	buf[2] = 'D'
+	buf[3] = byte(link)
+	copy(buf[4:], packet)
+	return lm.send(link, buf)
 }

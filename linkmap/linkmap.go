@@ -149,12 +149,19 @@ func (lm *Map) send(linkId int, packet []byte) error {
 	if sock == nil {
 		panic(fmt.Errorf("didn't find socket for link %d / addr %q", linkId, addr))
 	}
+	var err error
 	if sock == lm.listener {
-		_, err := sock.WriteToUDP(packet, addr)
+		_, err = sock.WriteToUDP(packet, addr)
+	} else {
+		_, err = sock.Write(packet)
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), "no buffer space available") {
+			return nil
+		}
 		return err
 	}
-	_, err := sock.Write(packet)
-	return err
+	return nil
 }
 
 func (lm *Map) Send(link int, packet []byte) error {

@@ -17,7 +17,10 @@ var (
 
 func main() {
 	flag.Parse()
-	tun, _ := tundev.New()
+	tun, err := tundev.New()
+	if err != nil {
+		log.Fatalf("Failed to create TUN device: %v", err)
+	}
 	mp := multiplexer.New()
 	lm := linkmap.New(mp)
 	if *listenPort > 0 {
@@ -34,5 +37,6 @@ func main() {
 		}
 	}
 	mp.Start(tun.Send, lm.Send)
+	go tun.Run(mp.Send)
 	lm.Run()
 }

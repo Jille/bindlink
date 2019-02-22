@@ -143,9 +143,12 @@ func (lm *Map) handlePacket(linkId int, sock *net.UDPConn, addr *net.UDPAddr, bu
 	}
 }
 
-func (lm *Map) send(link int, packet []byte) error {
-	addr := lm.linkToAddr[link]
+func (lm *Map) send(linkId int, packet []byte) error {
+	addr := lm.linkToAddr[linkId]
 	sock := lm.addrToSock[addr.String()]
+	if sock == nil {
+		panic(fmt.Errorf("didn't find socket for link %d / addr %q", linkId, addr))
+	}
 	if sock == lm.listener {
 		_, err := sock.WriteToUDP(packet, addr)
 		return err

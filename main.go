@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"strings"
 
 	"github.com/Jille/bindlink/linkmap"
@@ -16,18 +17,26 @@ var (
 
 func main() {
 	flag.Parse()
-	tun, _ := tundev.New()
+	tun, err := tundev.New()
+	if err != nil {
+		log.Fatalf("Failed to create TUN device: %v", err)
+	}
 	mp := multiplexer.New()
 	lm := linkmap.New(mp)
 	if *listenPort > 0 {
-		_ = lm.StartListener(*listenPort)
+		if err := lm.StartListener(*listenPort); err != nil {
+			log.Fatalf("Failed to start listening socket: %v", err)
+		}
 	}
 	for _, p := range strings.Split(*proxies, ",") {
 		if p == "" {
 			continue
 		}
-		_ = lm.InitiateLink(p)
+		if err := lm.InitiateLink(p); err != nil {
+			log.Fatalf("Failed to connect to peer %q: %v", p, err)
+		}
 	}
 	mp.Start(tun.Send, lm.Send)
+	go tun.Run(mp.Send)
 	lm.Run()
 }

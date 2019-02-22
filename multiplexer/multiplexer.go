@@ -42,8 +42,12 @@ func (m *Mux) Send(packet []byte) error {
 	return nil
 }
 
-func (m *Mux) AddLink(id int) {
-	m.links[id] = NewLinkStats()
+func (m *Mux) Received(linkId int, packet []byte) error {
+	return m.sendToSystem(packet)
+}
+
+func (m *Mux) AddLink(linkId int) {
+	m.links[linkId] = NewLinkStats()
 }
 
 func (m *Mux) HandleControl(linkId int, buf []byte) {

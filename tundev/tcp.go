@@ -17,7 +17,7 @@ type Device struct {
 	conn net.Conn
 }
 
-func New() (*Device, error) {
+func New(isMaster bool) (*Device, error) {
 	conn, err := net.Dial("tcp", *connectTcp)
 	if err != nil {
 		return nil, err

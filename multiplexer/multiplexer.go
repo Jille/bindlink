@@ -8,6 +8,23 @@ import (
 
 	"github.com/Jille/bindlink/multiplexer/sampler"
 	"github.com/Jille/bindlink/multiplexer/tallier"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	metrPacketsSent = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "packets_sent",
+			Help: "Total numbers of packets sent",
+		},
+		[]string{"link"})
+	metrLinkRate = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "link_rate",
+			Help: "Estimated throughput of link",
+		},
+		[]string{"link"})
 )
 
 type ControlPacket struct {
@@ -81,6 +98,7 @@ func (m *Mux) Send(packet []byte) error {
 		if err == nil {
 			ok = true
 			m.links[id].sent.Tally()
+			metrPacketsSent.With(prometheus.Labels{"link": string(id)}).Inc()
 		}
 	}
 	if ok {
@@ -126,7 +144,7 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 			link.rate = float64(received) / sent
 		}
 		weights[id] = math.Pow(math.Min(1.0, link.rate), 10.)
-		log.Printf(" %d: rate: %f", id, link.rate)
+		metrLinkRate.With(prometheus.Labels{"link": string(id)}).Set(link.rate)
 	}
 	m.sampler = sampler.New(weights)
 }

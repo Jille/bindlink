@@ -80,6 +80,7 @@ func (m *Mux) Send(packet []byte) error {
 		err = m.sendToLink(id, packet)
 		if err != nil {
 			ok = true
+			m.links[id].sent.Tally()
 		}
 	}
 	if ok {

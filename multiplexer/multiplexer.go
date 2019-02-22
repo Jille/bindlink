@@ -78,7 +78,7 @@ func (m *Mux) Send(packet []byte) error {
 	var err error
 	for _, id := range ids {
 		err = m.sendToLink(id, packet)
-		if err != nil {
+		if err == nil {
 			ok = true
 			m.links[id].sent.Tally()
 		}

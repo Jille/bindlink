@@ -3,8 +3,11 @@
 package tundev
 
 import (
+	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"syscall"
 
 	"github.com/songgao/water"
 )
@@ -27,6 +30,13 @@ func New(isMaster bool) (*Device, error) {
 	log.Printf("Interface name: %s", ifce.Name())
 	if err := exec.Command("ifconfig", ifce.Name(), ips[isMaster], ips[!isMaster]).Run(); err != nil {
 		return nil, err
+	}
+	if f, ok := ifce.ReadWriteCloser.(*os.File); ok {
+		if err := syscall.SetNonblock(int(f.Fd()), false); err != nil {
+			return nil, fmt.Errorf("Failed to set blocking mode: %v", err)
+		}
+	} else {
+		log.Printf("Couldn't cast to os.File. Might crash with EAGAIN.")
 	}
 	return &Device{ifce}, nil
 }

@@ -1,0 +1,5 @@
+language: go
+
+script:
+- "[ `gofmt -l *.go | wc -l` = 0 ]"
+- go build

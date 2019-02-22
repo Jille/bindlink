@@ -123,7 +123,7 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 				link.rate = 0
 			}
 		} else {
-			link.rate = sent / float64(received)
+			link.rate = float64(received) / sent
 		}
 		weights[id] = math.Pow(math.Min(1.0, link.rate), 10.)
 		log.Printf(" %d: rate: %f", id, link.rate)

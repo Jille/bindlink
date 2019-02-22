@@ -114,7 +114,16 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 	weights := map[int]float64{}
 	for id, received := range packet.Received {
 		link := m.links[id]
-		link.rate = float64(link.sent.Count()) / float64(received)
+		sent := float64(link.sent.Count())
+		if received == 0 {
+			if sent == 0 {
+				link.rate = float64(1)
+			} else {
+				link.rate = 0
+			}
+		} else {
+			link.rate = sent / float64(received)
+		}
 		weights[id] = math.Pow(math.Min(1.0, link.rate), 10.)
 		log.Printf(" %d: rate: %f", id, link.rate)
 	}

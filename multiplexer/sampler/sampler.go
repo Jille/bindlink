@@ -41,5 +41,5 @@ func (s *Sampler) Sample() int {
 			return s.keyLut[i]
 		}
 	}
-	panic("ok, wtf?")
+	return s.keyLut[0]
 }

@@ -17,7 +17,8 @@ var (
 func main() {
 	flag.Parse()
 	tun, _ := tundev.New()
-	lm := linkmap.New()
+	mp := multiplexer.New()
+	lm := linkmap.New(mp)
 	if *listenPort > 0 {
 		_ = lm.StartListener(*listenPort)
 	}
@@ -25,9 +26,8 @@ func main() {
 		if p == "" {
 			continue
 		}
-		lm.InitiateLink(p)
+		_ = lm.InitiateLink(p)
 	}
-	mp := multiplexer.New()
-	mp.Start(tun.Send)
-	lm.Run(mp)
+	mp.Start(tun.Send, lm.Send)
+	lm.Run()
 }

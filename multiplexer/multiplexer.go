@@ -1,10 +1,10 @@
 package multiplexer
 
 type Mux struct {
-	links      map[int]*Stats
-	nextLinkId int
-	// callback gives packets received from the tunnel to the local system
-	callback func([]byte) error
+	links        map[int]*Stats
+	nextLinkId   int
+	sendToSystem func([]byte) error
+	sendToLink   func(int, []byte) error
 }
 
 type Stats struct {
@@ -16,8 +16,9 @@ func New() *Mux {
 	}
 }
 
-func (m *Mux) Start(callback func([]byte) error) {
-	m.callback = callback
+func (m *Mux) Start(toSystem func([]byte) error, toLink func(int, []byte) error) {
+	m.sendToSystem = toSystem
+	m.sendToLink = toLink
 }
 
 func (m *Mux) Send(packet []byte) error {

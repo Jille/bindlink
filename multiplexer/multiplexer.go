@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/gob"
 	"log"
+	"math"
 
+	"github.com/Jille/bindlink/multiplexer/sampler"
 	"github.com/Jille/bindlink/multiplexer/tallier"
 )
 
@@ -19,6 +21,7 @@ type Mux struct {
 	sendToLink     func(int, []byte) error
 	ourCtrlSeqNo   int
 	theirCtrlSeqNo int
+	sampler        *sampler.Sampler
 }
 
 type LinkStats struct {
@@ -38,8 +41,51 @@ func (m *Mux) Start(toSystem func([]byte) error, toLink func(int, []byte) error)
 	m.sendToLink = toLink
 }
 
+func (m *Mux) pickLinks() []int {
+	if m.sampler == nil {
+		for id, _ := range m.links {
+			return []int{id}
+		}
+		return []int{}
+	}
+
+	prob := float64(0)
+	lut := map[int]bool{}
+
+	// TODO add sampler.SampleDistinct to do this properly and efficiently
+	for i := 0; i < 10; i++ {
+		id := m.sampler.Sample()
+		if _, ok := lut[id]; ok {
+			continue
+		}
+		lut[id] = true
+		prob += m.links[id].rate
+		if prob > 0.99 {
+			break
+		}
+	}
+
+	ret := []int{}
+	for id, _ := range lut {
+		ret = append(ret, id)
+	}
+	return ret
+}
+
 func (m *Mux) Send(packet []byte) error {
-	return nil
+	ids := m.pickLinks()
+	ok := false
+	var err error
+	for _, id := range ids {
+		err = m.sendToLink(id, packet)
+		if err != nil {
+			ok = true
+		}
+	}
+	if ok {
+		return nil
+	}
+	return err
 }
 
 func (m *Mux) Received(linkId int, packet []byte) error {
@@ -65,11 +111,14 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 
 	m.theirCtrlSeqNo = packet.SeqNo
 
+	weights := map[int]float64{}
 	for id, received := range packet.Received {
 		link := m.links[id]
 		link.rate = float64(link.sent.Count()) / float64(received)
+		weights[id] = math.Pow(math.Min(1.0, link.rate), 10.)
 		log.Printf(" %d: rate: %f", id, link.rate)
 	}
+	m.sampler = sampler.New(weights)
 }
 
 func (m *Mux) CraftControl() []byte {

@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	listenPort = flag.Int("listen_port", 0, "Listen for incoming connections on this port")
-	httpAddr   = flag.String("http_listen_port", ":8080", "Listen on this address for stats")
+	listenPort  = flag.Int("listen_port", 0, "Listen for incoming connections on this port")
+	httpAddr    = flag.String("http_listen_port", ":8080", "Listen on this address for stats")
 	targets     = flag.String("targets", "", "Host:port pairs of direct endpoints to connect to")
 	proxies     = flag.String("proxies", "", "Host:port pairs of proxy servers")
 	proxyTarget = flag.String("proxy_target", "", "Host:port pair to have proxy servers connect to")

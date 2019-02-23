@@ -15,6 +15,7 @@ type UDPLikeConn interface {
 	Write(b []byte) (int, error)
 	ReadFromUDP(b []byte) (int, *net.UDPAddr, error)
 }
+
 var _ UDPLikeConn = &net.UDPConn{}
 
 type Map struct {

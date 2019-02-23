@@ -18,7 +18,7 @@ type Device struct {
 
 func New(isMaster bool) (*Device, error) {
 	ips := map[bool]string{
-		true: "10.10.10.1",
+		true:  "10.10.10.1",
 		false: "10.10.10.2",
 	}
 	ifce, err := water.New(water.Config{

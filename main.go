@@ -28,7 +28,8 @@ func main() {
 		log.Fatal(http.ListenAndServe(*httpAddr, nil))
 	}()
 
-	tun, err := tundev.New(*listenPort > 0)
+	isMaster := *listenPort > 0
+	tun, err := tundev.New(isMaster)
 	if err != nil {
 		log.Fatalf("Failed to create TUN device: %v", err)
 	}

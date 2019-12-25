@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Jille/bindlink/multiplexer"
-	"github.com/Jille/bindlink/prefbuf"
 )
 
 type UDPLikeConn interface {
@@ -184,8 +183,11 @@ func (lm *Map) send(linkId int, packet []byte) error {
 }
 
 func (lm *Map) Send(link int, packet []byte) error {
-	prefix := []byte{'B', 'L', 'D', byte(link)}
-	buf := prefbuf.Prefix(prefix, packet)
-	defer prefbuf.Unprefix(buf, len(prefix))
+	buf := make([]byte, len(packet)+4)
+	buf[0] = 'B'
+	buf[1] = 'L'
+	buf[2] = 'D'
+	buf[3] = byte(link)
+	copy(buf[4:], packet)
 	return lm.send(link, buf)
 }

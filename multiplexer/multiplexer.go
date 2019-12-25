@@ -38,6 +38,12 @@ var (
 			Help: "Duplication of packets",
 		},
 	)
+	metrBytesSent = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "bytes_sent",
+			Help: "Total numbers of bytes sent",
+		},
+		[]string{"link"})
 )
 
 type ControlPacket struct {
@@ -115,6 +121,7 @@ func (m *Mux) Send(packet []byte) error {
 			ok = true
 			m.links[id].sent.Tally()
 			metrPacketsSent.With(prometheus.Labels{"link": strconv.Itoa(id)}).Inc()
+			metrBytesSent.With(prometheus.Labels{"link": strconv.Itoa(id)}).Add(float64(len(packet)))
 		}
 	}
 	if ok {

@@ -132,7 +132,11 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 
 	weights := map[int]float64{}
 	for id, received := range packet.Received {
-		link := m.links[id]
+		link, ok := m.links[id]
+		if !ok {
+			// Likely we are the master, and before we ever got a packet over this link (which is when we register the existence of a link), we got a control packet which contains all links known by the client.
+			continue
+		}
 		sent := float64(link.sent.Count())
 		if received == 0 {
 			if sent == 0 {

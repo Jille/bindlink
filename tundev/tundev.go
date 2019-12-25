@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	mtu = flag.Int("mtu", 1468, "MTU to use for tundev")
+	mtu = flag.Int("mtu", 1460, "MTU to use for tundev")
 )
 
 type Device struct {

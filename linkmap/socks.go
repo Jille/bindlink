@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func setupSOCKS(proxy string, target, localAddr *net.UDPAddr) (net.Conn, *net.UDPAddr, error) {
+func setupSOCKS(proxy string, target, localAddr *net.UDPAddr) (*net.TCPConn, *net.UDPAddr, error) {
 	proxyAddr, err := net.ResolveTCPAddr("tcp", proxy)
 	if err != nil {
 		return nil, nil, err
@@ -171,6 +171,12 @@ func (u *UDPOverSocks) connect() error {
 		return err
 	}
 	u.tcpConn = conn
+	if err = conn.SetKeepAlive(true); err != nil {
+		return fmt.Errorf("SetKeepAlive: %v", err)
+	}
+	if err = conn.SetKeepAlivePeriod(4 * time.Second); err != nil {
+		return fmt.Errorf("SetKeepAlivePeriod: %v", err)
+	}
 	u.udpProxyAddr = addr
 	return nil
 }

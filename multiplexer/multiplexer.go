@@ -102,9 +102,10 @@ func (m *Mux) pickLinks() []int {
 		}
 		lut[id] = true
 		prob += m.links[id].rate
-		if prob > 0.95 {
-			break
-		}
+		// if prob > 0.95 {
+		// 	break
+		// }
+		break
 	}
 
 	ret := []int{}
@@ -180,7 +181,8 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 		} else {
 			link.rate = float64(received) / sent
 		}
-		weights[id] = math.Pow(math.Min(1.0, link.rate), 4.)
+		// weights[id] = math.Pow(math.Min(1.0, link.rate), 4.)
+		weights[id] = math.Min(1.0, link.rate)
 		metrLinkRate.With(prometheus.Labels{"link": strconv.Itoa(id)}).Set(link.rate)
 	}
 	m.sampler = sampler.New(weights)

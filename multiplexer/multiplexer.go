@@ -38,6 +38,12 @@ var (
 			Help: "Duplication of packets",
 		},
 	)
+	metrBytesReceived = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "bytes_received",
+			Help: "Total numbers of bytes received",
+		},
+		[]string{"link"})
 	metrBytesSent = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "bytes_sent",
@@ -135,6 +141,9 @@ func (m *Mux) Received(linkId int, packet []byte) error {
 	metrPacketsReceived.With(prometheus.Labels{
 		"link": strconv.Itoa(linkId),
 	}).Inc()
+	metrBytesReceived.With(prometheus.Labels{
+		"link": strconv.Itoa(linkId),
+	}).Add(float64(len(packet)))
 	return m.sendToSystem(packet)
 }
 

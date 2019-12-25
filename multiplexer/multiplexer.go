@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"log"
 	"math"
+	"strconv"
 
 	"github.com/Jille/bindlink/multiplexer/sampler"
 	"github.com/Jille/bindlink/multiplexer/tallier"
@@ -25,6 +26,12 @@ var (
 			Help: "Estimated throughput of link",
 		},
 		[]string{"link"})
+	metrDuplication = promauto.NewSummary(
+		prometheus.SummaryOpts{
+			Name: "duplication",
+			Help: "Duplication of packets",
+		},
+	)
 )
 
 type ControlPacket struct {
@@ -86,6 +93,9 @@ func (m *Mux) pickLinks() []int {
 	for id, _ := range lut {
 		ret = append(ret, id)
 	}
+
+	metrDuplication.Observe(float64(len(ret)))
+
 	return ret
 }
 
@@ -98,7 +108,7 @@ func (m *Mux) Send(packet []byte) error {
 		if err == nil {
 			ok = true
 			m.links[id].sent.Tally()
-			metrPacketsSent.With(prometheus.Labels{"link": string(id)}).Inc()
+			metrPacketsSent.With(prometheus.Labels{"link": strconv.Itoa(id)}).Inc()
 		}
 	}
 	if ok {
@@ -143,8 +153,8 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 		} else {
 			link.rate = float64(received) / sent
 		}
-		weights[id] = math.Pow(math.Min(1.0, link.rate), 10.)
-		metrLinkRate.With(prometheus.Labels{"link": string(id)}).Set(link.rate)
+		weights[id] = math.Pow(math.Min(1.0, link.rate), 2.)
+		metrLinkRate.With(prometheus.Labels{"link": strconv.Itoa(id)}).Set(link.rate)
 	}
 	m.sampler = sampler.New(weights)
 }

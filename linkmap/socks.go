@@ -5,6 +5,8 @@ import (
 	"log"
 	"net"
 	"time"
+
+	"github.com/Jille/bindlink/prefbuf"
 )
 
 func setupSOCKS(proxy string, target, localAddr *net.UDPAddr) (*net.TCPConn, *net.UDPAddr, error) {
@@ -182,12 +184,13 @@ func (u *UDPOverSocks) connect() error {
 }
 
 func (u *UDPOverSocks) Write(b []byte) (int, error) {
-	buf := make([]byte, len(b)+sizeOfHostPort(u.targetAddr)+3)
-	buf[0] = 0
-	buf[1] = 0
-	buf[2] = 0
-	writeHostPort(buf[3:], u.targetAddr)
-	copy(buf[3+sizeOfHostPort(u.targetAddr):], b)
+	prefix := make([]byte, sizeOfHostPort(u.targetAddr)+3)
+	prefix[0] = 0
+	prefix[1] = 0
+	prefix[2] = 0
+	writeHostPort(prefix[3:], u.targetAddr)
+	buf := prefbuf.Prefix(prefix, b)
+	defer prefbuf.Unprefix(buf, len(prefix))
 	n, err := u.udpConn.WriteToUDP(buf, u.udpProxyAddr)
 	n -= 10
 	if n < 0 {

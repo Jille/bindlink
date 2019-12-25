@@ -7,6 +7,8 @@ import (
 	"flag"
 	"log"
 	"net"
+
+	"github.com/Jille/bindlink/prefbuf"
 )
 
 var (
@@ -26,7 +28,7 @@ func New(isMaster bool) (*Device, error) {
 }
 
 func (d *Device) Run(sendToMultiplexer func([]byte) error) {
-	buf := make([]byte, 2000)
+	buf := prefbuf.Alloc(2000)
 	for {
 		n, err := d.conn.Read(buf)
 		if err != nil {

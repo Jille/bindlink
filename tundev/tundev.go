@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/Jille/bindlink/prefbuf"
 	"github.com/songgao/water"
 )
 
@@ -70,7 +71,7 @@ func New(isMaster bool) (*Device, error) {
 }
 
 func (d *Device) Run(sendToMultiplexer func([]byte) error) {
-	buf := make([]byte, 2000)
+	buf := prefbuf.Alloc(2000)
 	for {
 		n, err := d.ifce.Read(buf)
 		if err != nil {

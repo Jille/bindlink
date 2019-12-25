@@ -84,7 +84,7 @@ func (m *Mux) pickLinks() []int {
 		}
 		lut[id] = true
 		prob += m.links[id].rate
-		if prob > 0.99 {
+		if prob > 0.95 {
 			break
 		}
 	}

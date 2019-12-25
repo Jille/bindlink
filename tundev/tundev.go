@@ -3,13 +3,20 @@
 package tundev
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
 	"syscall"
 
 	"github.com/songgao/water"
+)
+
+var (
+	mtu = flag.Int("mtu", 1468, "MTU to use for tundev")
 )
 
 type Device struct {
@@ -28,7 +35,27 @@ func New(isMaster bool) (*Device, error) {
 		return nil, err
 	}
 	log.Printf("Interface name: %s", ifce.Name())
-	c := exec.Command("ifconfig", ifce.Name(), ips[isMaster], "netmask", "255.255.255.252", "mtu", "1000")
+	var c *exec.Cmd
+	if runtime.GOOS == "darwin" {
+		c = exec.Command(
+			"ifconfig",
+			ifce.Name(),
+			ips[isMaster],
+			ips[!isMaster],
+			"mtu",
+			strconv.Itoa(*mtu),
+		)
+	} else {
+		c = exec.Command(
+			"ifconfig",
+			ifce.Name(),
+			ips[isMaster],
+			"netmask",
+			"255.255.255.252",
+			"mtu",
+			strconv.Itoa(*mtu),
+		)
+	}
 	if out, err := c.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("%s: %s", err, out)
 	}

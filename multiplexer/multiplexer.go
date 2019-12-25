@@ -14,6 +14,12 @@ import (
 )
 
 var (
+	metrPacketsReceived = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "packets_received",
+			Help: "Total numbers of packets received",
+		},
+		[]string{"link"})
 	metrPacketsSent = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "packets_sent",
@@ -119,6 +125,9 @@ func (m *Mux) Send(packet []byte) error {
 
 func (m *Mux) Received(linkId int, packet []byte) error {
 	m.links[linkId].received.Tally()
+	metrPacketsReceived.With(prometheus.Labels{
+		"link": strconv.Itoa(linkId),
+	}).Inc()
 	return m.sendToSystem(packet)
 }
 

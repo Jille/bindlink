@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	_ "net/http/pprof"
+
 	"github.com/Jille/bindlink/linkmap"
 	"github.com/Jille/bindlink/multiplexer"
 	"github.com/Jille/bindlink/tundev"

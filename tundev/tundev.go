@@ -28,8 +28,9 @@ func New(isMaster bool) (*Device, error) {
 		return nil, err
 	}
 	log.Printf("Interface name: %s", ifce.Name())
-	if err := exec.Command("ifconfig", ifce.Name(), ips[isMaster], "netmask", "255.255.255.252", "mtu", "1000").Run(); err != nil {
-		return nil, err
+	c := exec.Command("ifconfig", ifce.Name(), ips[isMaster], "netmask", "255.255.255.252", "mtu", "1000")
+	if out, err := c.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("%s: %s", err, out)
 	}
 	if f, ok := ifce.ReadWriteCloser.(*os.File); ok {
 		if err := syscall.SetNonblock(int(f.Fd()), false); err != nil {

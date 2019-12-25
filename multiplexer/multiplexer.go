@@ -166,7 +166,7 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 		} else {
 			link.rate = float64(received) / sent
 		}
-		weights[id] = math.Pow(math.Min(1.0, link.rate), 2.)
+		weights[id] = math.Pow(math.Min(1.0, link.rate), 4.)
 		metrLinkRate.With(prometheus.Labels{"link": strconv.Itoa(id)}).Set(link.rate)
 	}
 	m.sampler = sampler.New(weights)
@@ -194,7 +194,7 @@ func (m *Mux) CraftControl() []byte {
 
 func NewLinkStats() *LinkStats {
 	return &LinkStats{
-		sent:     tallier.New(500, 30000), // 30s window with 500ms bucket size
-		received: tallier.New(500, 30000),
+		sent:     tallier.New(250, 30000), // 30s window with 250ms bucket size
+		received: tallier.New(250, 30000),
 	}
 }

@@ -52,9 +52,13 @@ var (
 		[]string{"link"})
 )
 
+type ReceivedEntry struct {
+	//Count int64
+	Bytes uint64
+}
 type ControlPacket struct {
 	SeqNo    int
-	Received map[int]int64
+	Received map[int]ReceivedEntry
 }
 
 type Mux struct {
@@ -126,7 +130,7 @@ func (m *Mux) Send(packet []byte) error {
 		err = m.sendToLink(id, packet)
 		if err == nil {
 			ok = true
-			m.links[id].sent.Tally()
+			m.links[id].sent.TallyN(uint64(len(packet)))
 			metrPacketsSent.With(prometheus.Labels{"link": strconv.Itoa(id)}).Inc()
 			metrBytesSent.With(prometheus.Labels{"link": strconv.Itoa(id)}).Add(float64(len(packet)))
 		}
@@ -138,7 +142,7 @@ func (m *Mux) Send(packet []byte) error {
 }
 
 func (m *Mux) Received(linkId int, packet []byte) error {
-	m.links[linkId].received.Tally()
+	m.links[linkId].received.TallyN(uint64(len(packet)))
 	metrPacketsReceived.With(prometheus.Labels{
 		"link": strconv.Itoa(linkId),
 	}).Inc()
@@ -169,17 +173,17 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 	weights := map[int]float64{}
 	for id, link := range m.links {
 		sent := float64(link.sent.Count())
-		received, ok := packet.Received[id]
+		receivedEntry, ok := packet.Received[id]
 		if !ok {
 			link.rate = 0
-		} else if received == 0 {
+		} else if receivedEntry.Bytes == 0 {
 			if sent == 0 {
 				link.rate = 1
 			} else {
 				link.rate = 0
 			}
 		} else {
-			link.rate = float64(received) / sent
+			link.rate = float64(receivedEntry.Bytes) / sent
 		}
 		// weights[id] = math.Pow(math.Min(1.0, link.rate), 4.)
 		weights[id] = math.Min(1.0, link.rate)
@@ -192,11 +196,13 @@ func (m *Mux) CraftControl() []byte {
 	m.ourCtrlSeqNo++
 	packet := ControlPacket{
 		SeqNo:    m.ourCtrlSeqNo,
-		Received: map[int]int64{},
+		Received: map[int]ReceivedEntry{},
 	}
 
 	for id, link := range m.links {
-		packet.Received[id] = link.received.Count()
+		packet.Received[id] = ReceivedEntry{
+			Bytes: link.received.Count(),
+		}
 	}
 
 	// encode
@@ -210,7 +216,7 @@ func (m *Mux) CraftControl() []byte {
 
 func NewLinkStats() *LinkStats {
 	return &LinkStats{
-		sent:     tallier.New(250, 30000), // 30s window with 250ms bucket size
-		received: tallier.New(250, 30000),
+		sent:     tallier.New(100, 5000), // 5s window with 100ms bucket size
+		received: tallier.New(100, 5000),
 	}
 }

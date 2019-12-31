@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"log"
-	"math"
 	"strconv"
 
 	"github.com/Jille/bindlink/multiplexer/sampler"
@@ -106,10 +105,10 @@ func (m *Mux) pickLinks() []int {
 		}
 		lut[id] = true
 		prob += m.links[id].rate
-		// if prob > 0.95 {
+		// if prob > 0.9 {
 		// 	break
 		// }
-		break
+		break // TODO
 	}
 
 	ret := []int{}
@@ -179,14 +178,15 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 		} else if receivedEntry.Bytes == 0 {
 			if sent == 0 {
 				link.rate = 1
+				weights[id] = 1
 			} else {
 				link.rate = 0
+				weights[id] = 0
 			}
 		} else {
 			link.rate = float64(receivedEntry.Bytes) / sent
+			weights[id] = float64(receivedEntry.Bytes)
 		}
-		// weights[id] = math.Pow(math.Min(1.0, link.rate), 4.)
-		weights[id] = math.Min(1.0, link.rate)
 		metrLinkRate.With(prometheus.Labels{"link": strconv.Itoa(id)}).Set(link.rate)
 	}
 	m.sampler = sampler.New(weights)

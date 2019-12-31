@@ -173,19 +173,22 @@ func (m *Mux) HandleControl(linkId int, buf []byte) {
 	for id, link := range m.links {
 		sent := float64(link.sent.Count())
 		receivedEntry, ok := packet.Received[id]
+		received := float64(link.received.Count())
+		if received == 0 {
+			weights[id] = 1
+		} else {
+			weights[id] = received
+		}
 		if !ok {
 			link.rate = 0
 		} else if receivedEntry.Bytes == 0 {
 			if sent == 0 {
 				link.rate = 1
-				weights[id] = 1
 			} else {
 				link.rate = 0
-				weights[id] = 0
 			}
 		} else {
 			link.rate = float64(receivedEntry.Bytes) / sent
-			weights[id] = float64(receivedEntry.Bytes)
 		}
 		metrLinkRate.With(prometheus.Labels{"link": strconv.Itoa(id)}).Set(link.rate)
 	}

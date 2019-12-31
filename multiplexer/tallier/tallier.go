@@ -6,7 +6,7 @@ import (
 
 type tallierBucket struct {
 	start int64
-	count int64
+	count uint64
 }
 
 type Tallier struct {
@@ -31,18 +31,22 @@ func New(bucketSize, window int64) *Tallier {
 }
 
 func (t *Tallier) Tally() {
+	t.TallyN(1)
+}
+
+func (t *Tallier) TallyN(n uint64) {
 	start := nowMillis() / t.bucketSize
 	bucket := start % t.nBuckets
 	if t.buckets[bucket].start != start {
 		t.buckets[bucket].start = start
 		t.buckets[bucket].count = 0
 	}
-	t.buckets[bucket].count++
+	t.buckets[bucket].count += n
 }
 
 // Returns the number of tallies in the last window milliseconds.
-func (t *Tallier) Count() int64 {
-	ret := int64(0)
+func (t *Tallier) Count() uint64 {
+	ret := uint64(0)
 	start := (nowMillis() - t.window) / t.bucketSize
 	for i := 0; i < int(t.nBuckets); i++ {
 		if t.buckets[i].start < start {
